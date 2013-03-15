@@ -1,0 +1,211 @@
+#!/bin/bash
+source ~/.fflow/config
+
+action=$1
+
+help(){
+    case "$action" in 
+        start)
+            echo "create a new branch with feature"
+            echo "Usage: fflow start <feature>"
+            ;;
+        checkout)
+            echo "switch to a certain feature"
+            echo "Usage: fflow checkout <feature>"
+            ;;
+        checkin)
+            echo "switch to a certain feature, commit it, and push to remote-branch"
+            echo "Usage: fflow checkin <feature> <comment>"
+            ;; 
+        update)
+            echo "switch to a certain feature and sync with remote-branch"
+            echo "Usage: fflow update <feature>"
+            ;;
+        deploy)
+            echo "deploy feature to a certain enviroment"
+            echo "Usage: fflow deploy <feature> [alpha|beta|product]"
+            ;;
+        alpha)
+            echo "deploy feature to alpha"
+            echo "Usage: fflow alpha <feature>"
+            ;;
+        beta)
+            echo "deploy feature to beta"
+            echo "Usage: fflow alpha <feature>"
+            ;;
+        product)
+            echo "deploy feature to product"
+            echo "Usage: fflow alpha <feature>"
+            ;;
+        *)
+            echo "Usage: fflow [start|checkin|update|deploy|alpha|beta|product] [options..]"
+            ;;
+    esac
+}
+
+deal_dir(){
+
+    if [ -n $workspace ];then
+        cd $workspace
+        $1 $2 $3
+    elif [ -r ".git" ];then
+        $1 $2 $3
+    else
+        for dirname in `ls -d */`
+        do
+            cd $dirname 
+            $1 $2 $3
+            cd - > /dev/null
+        done
+    fi
+}
+
+start(){
+    local feature=$1
+    if [ ! -n $feature ];then
+        help "start"
+        exit 1
+    fi
+
+    if [ -d ".git" ];then
+        git checkout master
+        git checkout -b $feature
+    else
+        echo "[ERROR] not a git repository"
+    fi
+}
+
+checkin(){
+    local feature=$1
+    local comment=$2
+    if [ -n "$comment" ];then
+        echo "[ERROR] missing argument comment"
+        help "checkin"
+    fi
+    if [ -f ".git/refs/heads/$feature" ];then
+        git commit -m $comment
+        git pull origin $feature
+        git push origin $feature
+    fi
+}
+
+checkout(){
+    local feature=$1
+    if [ -f ".git/refs/heads/$feature" ];then
+        git commit -m $comment
+        git pull origin $feature
+        git push origin $feature
+    fi
+}
+
+update(){
+    local $feature=$1
+    if [ -f ".git/refs/heads/$feature" ];then
+        git checkout $branch
+        git pull origin $branch
+    fi
+}
+
+deploy(){
+    local feature=$1
+    local env=$2
+    local dirname=`basename $PWD`
+    local branch=
+    local project_name=
+
+    if [ ! -n "$1" ];then
+        echo "[ERROR] missing argument <feature>"
+        help "deploy"
+        exit 1
+    fi
+
+    if [ ! -n "$2" ];then
+        echo "[ERROR] missing argument <env>"
+        help "deploy"
+        exit 1
+    fi
+
+    if [ ! -n "$username" ];then
+        read -p "Enter your oa username: " -s username
+        echo ""
+    fi
+
+    if [ ! -n "$password" ];then
+        read -p "Enter your oa password: " -s password
+        echo ""
+    fi
+
+    if [ $env = "alpha" ];then
+        branch="alpha"
+    elif [ $env = "beta" ] || [ $env = "product" ] ;then
+        branch="master"
+    else
+        echo "[ERROR] Invalid enviroment \"${env}\""
+        deploy_usage
+        return
+    fi
+
+    project_name=${dirname/-static/}
+
+
+    # check branch contains branch by `git branch --contains`
+    if [ -f ".git/refs/heads/$branch" ] && [ -f ".git/refs/heads/$feature" ];then
+        echo "[INFO] $project_name-static git checkout $branch"
+        git checkout $branch
+        echo "[INFO] $project_name-static git merge $feature --no-ff"
+        git merge $feature --no-ff
+        echo "[INFO] $project_name-static git pull origin $branch"
+        git pull origin $branch
+        echo "[INFO] $project_name-static git push origin $branch"
+        git push origin $branch
+        http_code=`curl -sw "%{http_code}" http://$username:$password@$env.ci.dp/job/$env-$project_name-static/build -o /dev/null`
+        case "$http_code" in 
+            200)
+                echo "[INFO] ok"
+                ;;
+            403)
+                echo "[ERROR] access forbidden for build, please check fflow config."
+                ;;
+            404)
+                echo "[ERROR] no such task: $env-$project_name-static"
+                ;;
+        esac
+    fi
+}
+
+
+
+case "$action" in 
+    help)
+        help $2
+        ;;
+    start)
+        start $2 
+        ;;
+    checkin)
+        deal_dir "checkin" $2 $3
+        ;;
+    checkout)
+        deal_dir "checkout" $2
+        ;;
+    update)
+        deal_dir "update" $2
+        ;;
+    deploy)
+        deal_dir "deploy" $2 $3
+        ;;
+    alpha)
+        fflow deploy $2 alpha
+        ;;
+    beta)
+        fflow deploy $2 beta
+        ;;
+    product)
+        fflow deploy $2 product
+        ;;
+    *)
+        help
+        exit 1
+        ;;
+esac
+
