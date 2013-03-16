@@ -6,36 +6,36 @@ action=$1
 help(){
     case "$action" in 
         start)
-            echo "create a new branch with feature"
             echo "Usage: fflow start <feature>"
+            echo "create a new branch with feature"
             ;;
         checkout)
-            echo "switch to a certain feature"
             echo "Usage: fflow checkout <feature>"
+            echo "switch to a certain feature"
             ;;
         checkin)
-            echo "switch to a certain feature, commit it, and push to remote-branch"
             echo "Usage: fflow checkin <feature> <comment>"
+            echo "switch to a certain feature, commit it, and push to remote-branch"
             ;; 
         update)
-            echo "switch to a certain feature and sync with remote-branch"
             echo "Usage: fflow update <feature>"
+            echo "switch to a certain feature and sync with remote-branch"
             ;;
         deploy)
-            echo "deploy feature to a certain enviroment"
             echo "Usage: fflow deploy <feature> [alpha|beta|product]"
+            echo "deploy feature to a certain enviroment"
             ;;
         alpha)
-            echo "deploy feature to alpha"
             echo "Usage: fflow alpha <feature>"
+            echo "deploy feature to alpha"
             ;;
         beta)
-            echo "deploy feature to beta"
             echo "Usage: fflow alpha <feature>"
+            echo "deploy feature to beta"
             ;;
         product)
-            echo "deploy feature to product"
             echo "Usage: fflow alpha <feature>"
+            echo "deploy feature to product"
             ;;
         *)
             echo "Usage: fflow [start|checkin|update|deploy|alpha|beta|product] [options..]"
@@ -78,11 +78,12 @@ start(){
 checkin(){
     local feature=$1
     local comment=$2
-    if [ -n "$comment" ];then
-        echo "[ERROR] missing argument comment"
+    if [ ! -n "$feature "] || [ ! -n "$comment" ];then
         help "checkin"
     fi
+
     if [ -f ".git/refs/heads/$feature" ];then
+        git checkout $feature
         git commit -m $comment
         git pull origin $feature
         git push origin $feature
@@ -91,15 +92,23 @@ checkin(){
 
 checkout(){
     local feature=$1
+    if [ ! -n "$feature" ]then;
+        help "checkout"
+        exit 1
+    fi
+
     if [ -f ".git/refs/heads/$feature" ];then
-        git commit -m $comment
-        git pull origin $feature
-        git push origin $feature
+        git checkout $feature
     fi
 }
 
 update(){
     local $feature=$1
+    if [ ! -n "$feature" ]then;
+        help "update"
+        exit 1
+    fi
+
     if [ -f ".git/refs/heads/$feature" ];then
         git checkout $branch
         git pull origin $branch
@@ -113,14 +122,7 @@ deploy(){
     local branch=
     local project_name=
 
-    if [ ! -n "$1" ];then
-        echo "[ERROR] missing argument <feature>"
-        help "deploy"
-        exit 1
-    fi
-
-    if [ ! -n "$2" ];then
-        echo "[ERROR] missing argument <env>"
+    if [ ! -n "$feature" ] || [ ! -n "$env" ];then
         help "deploy"
         exit 1
     fi
@@ -141,7 +143,7 @@ deploy(){
         branch="master"
     else
         echo "[ERROR] Invalid enviroment \"${env}\""
-        deploy_usage
+        help "deploy"
         return
     fi
 
