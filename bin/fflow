@@ -45,10 +45,7 @@ help(){
 
 deal_dir(){
 
-    if [ -n $workspace ];then
-        cd $workspace
-        $1 $2 $3
-    elif [ -r ".git" ];then
+    if [ -r ".git" ];then
         $1 $2 $3
     else
         for dirname in `ls -d */`
@@ -69,7 +66,8 @@ start(){
 
     if [ -d ".git" ];then
         git checkout master
-        git checkout -b $feature
+        git branch $feature
+        git checkout $feature
     else
         echo "[ERROR] not a git repository"
     fi
@@ -84,7 +82,7 @@ checkin(){
 
     if [ -f ".git/refs/heads/$feature" ];then
         git checkout $feature
-        git commit -m $comment
+        git commit -m "[$feature] $comment"
         git pull origin $feature
         git push origin $feature
     fi
@@ -115,12 +113,46 @@ update(){
     fi
 }
 
+ci(){
+    local env=
+    local dirname=`basename $PWD`
+    local project_name=${dirname/-static/}
+
+    if [ ! -n "$1" ];then
+        env=`git rev-parse --abbrev-ref HEAD`
+    else
+        env="$1"
+    fi
+
+    if [ $env != "alpha" ] && [ $env != "beta" ] && [ $env != "product" ];then
+        echo "[ERROR] invalid enviroment $env."
+        exit 1
+    fi
+
+    http_code=`curl -sw "%{http_code}" http://$username:$password@$env.ci.dp/job/$env-$project_name-static/build -o /dev/null`
+    echo "[INFO] trying to trigger http://$env.ci.dp/job/$env-$project_name-static/build"
+    echo "[INFO] $http_code"
+    case "$http_code" in 
+        302)
+            echo "[INFO] ok"
+            ;;
+        403)
+            echo "[ERROR] access forbidden for build, please check fflow config."
+            ;;
+        404)
+            echo "[ERROR] 404 http://$username:$password@$env.ci.dp/job/$env-$project_name-static/build"
+            echo "[ERROR] no such task: $env-$project_name-static"
+            ;;
+    esac
+}
+
 deploy(){
     local feature=$1
     local env=$2
     local dirname=`basename $PWD`
     local branch=
-    local project_name=
+    local project_name=${dirname/-static/}
+
 
     if [ ! -n "$feature" ] || [ ! -n "$env" ];then
         help "deploy"
@@ -147,8 +179,6 @@ deploy(){
         return
     fi
 
-    project_name=${dirname/-static/}
-
 
     # check branch contains branch by `git branch --contains`
     if [ -f ".git/refs/heads/$branch" ] && [ -f ".git/refs/heads/$feature" ];then
@@ -160,18 +190,7 @@ deploy(){
         git pull origin $branch
         echo "[INFO] $project_name-static git push origin $branch"
         git push origin $branch
-        http_code=`curl -sw "%{http_code}" http://$username:$password@$env.ci.dp/job/$env-$project_name-static/build -o /dev/null`
-        case "$http_code" in 
-            200)
-                echo "[INFO] ok"
-                ;;
-            403)
-                echo "[ERROR] access forbidden for build, please check fflow config."
-                ;;
-            404)
-                echo "[ERROR] no such task: $env-$project_name-static"
-                ;;
-        esac
+        ci $branch $project_name
     fi
 }
 
@@ -192,6 +211,9 @@ case "$action" in
         ;;
     update)
         deal_dir "update" $2
+        ;;
+    ci)
+        ci $2
         ;;
     deploy)
         deal_dir "deploy" $2 $3
