@@ -92,7 +92,7 @@ checkin(){
 
 checkout(){
     local feature=$1
-    if [ ! -n "$feature" ]then;
+    if [ ! -n "$feature" ];then
         help "checkout"
         exit 1
     fi
@@ -104,7 +104,7 @@ checkout(){
 
 update(){
     local $feature=$1
-    if [ ! -n "$feature" ]then;
+    if [ ! -n "$feature" ];then
         help "update"
         exit 1
     fi
