@@ -76,7 +76,7 @@ start(){
 checkin(){
     local feature=$1
     local comment=$2
-    if [ ! -n "$feature "] || [ ! -n "$comment" ];then
+    if [ ! -n "$feature " ] || [ ! -n "$comment" ];then
         help "checkin"
     fi
 
@@ -118,8 +118,15 @@ ci(){
     local dirname=`basename $PWD`
     local project_name=${dirname/-static/}
 
-    if [ ! -n "$1" ];then
+    if [ -n "$1" ];then
+        project_name=$1
+    fi
+
+    if [ ! -n "$2" ];then
         env=`git rev-parse --abbrev-ref HEAD`
+        if [ $env == "master" ];then
+            env="beta"
+        fi
     else
         env="$1"
     fi
@@ -131,16 +138,15 @@ ci(){
 
     http_code=`curl -sw "%{http_code}" http://$username:$password@$env.ci.dp/job/$env-$project_name-static/build -o /dev/null`
     echo "[INFO] trying to trigger http://$env.ci.dp/job/$env-$project_name-static/build"
-    echo "[INFO] $http_code"
     case "$http_code" in 
         302)
-            echo "[INFO] ok"
+            echo "[INFO] 302 OK"
             ;;
         403)
-            echo "[ERROR] access forbidden for build, please check fflow config."
+            echo "[ERROR] 403 access forbidden for build, please check fflow config."
             ;;
         404)
-            echo "[ERROR] 404 http://$username:$password@$env.ci.dp/job/$env-$project_name-static/build"
+            echo "[ERROR] 404 http://$env.ci.dp/job/$env-$project_name-static/build"
             echo "[ERROR] no such task: $env-$project_name-static"
             ;;
     esac
@@ -213,7 +219,7 @@ case "$action" in
         deal_dir "update" $2
         ;;
     ci)
-        ci $2
+        ci $2 $3
         ;;
     deploy)
         deal_dir "deploy" $2 $3
