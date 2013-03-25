@@ -128,7 +128,7 @@ ci(){
             env="beta"
         fi
     else
-        env="$1"
+        env="$2"
     fi
 
     if [ $env != "alpha" ] && [ $env != "beta" ] && [ $env != "product" ];then
