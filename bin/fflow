@@ -196,7 +196,7 @@ deploy(){
         git pull origin $branch
         echo "[INFO] $project_name-static git push origin $branch"
         git push origin $branch
-        ci $branch $project_name
+        ci $project_name $branch
     fi
 }
 
