@@ -196,7 +196,7 @@ deploy(){
         git merge $feature --no-ff
         echo "[INFO] $project_name-static git push origin $branch"
         git push origin $branch
-        ci $project_name $branch
+        ci
     fi
 }
 
