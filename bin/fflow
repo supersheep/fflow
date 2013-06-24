@@ -65,9 +65,7 @@ start(){
     fi
 
     if [ -d ".git" ];then
-        git checkout master
-        git branch $feature
-        git checkout $feature
+        git checkout -b $feature master
     else
         echo "[ERROR] not a git repository"
     fi
