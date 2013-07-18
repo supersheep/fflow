@@ -186,6 +186,10 @@ deploy(){
 
     # check branch contains branch by `git branch --contains`
     if [ -f ".git/refs/heads/$branch" ] && [ -f ".git/refs/heads/$feature" ];then
+        echo "[INFO] $project_name-static git pull origin $feature"
+        git pull origin $feature
+        echo "[INFO] $project_name-static git push origin $feature"
+        git push origin $feature
         echo "[INFO] $project_name-static git checkout $branch"
         git checkout $branch
         echo "[INFO] $project_name-static git pull origin $branch"
